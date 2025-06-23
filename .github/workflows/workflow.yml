@@ -49,8 +49,3 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
 
 
-      - name: Auto-approve if owner not affected
-        if: |
-          !contains(steps.reviewers.outputs.REVIEWERS, 'porcupine-vortex-62')
-        uses: hmarr/auto-approve-action@v3
-
