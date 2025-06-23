@@ -51,6 +51,6 @@ jobs:
 
       - name: Auto-approve if owner not affected
         if: |
-          !contains(steps.reviewers.outputs.REVIEWERS, 'YOUR_GITHUB_USERNAME')  # <-- Replace with your username
+          !contains(steps.reviewers.outputs.REVIEWERS, 'porcupine-vortex-62')
         uses: hmarr/auto-approve-action@v3
 
