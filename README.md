@@ -3,5 +3,3 @@ Gitcoin is a cryptocurrency that only requires you and your counter-party to app
 Instead of using a centralized onramp to buy Gitcoin like with other coins, you can transact offline with your counter-party and make your pull-request simultaneously. This really cuts out the middle-man and is 100% tax-free
 
 This is a "first of its kind" cryptocurrency because only the two parties to the transaction need to approve
-
-If you want to make Michael Saylor blush, ask him directly about Gitcoin
