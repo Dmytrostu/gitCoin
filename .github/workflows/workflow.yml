@@ -1,21 +1,62 @@
-name: Balance Validation And Approver Workflow
+name: Balance Review Enforcement
 
 on:
   pull_request:
     paths:
       - 'balances.csv'
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
 
 jobs:
-  run-python-script:
+  enforce-balances:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
-      - name: Checkout repo
+      - name: Checkout PR
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          fetch-depth: 2  # Needed to diff against base
 
-      - name: Run Python script
-        run: python scripts/myscript.py
+      - name: Parse diff and check balances
+        id: check
+        run: |
+          set -e
+          OLD_BALANCES=$(git show HEAD^:balances.csv | awk -F, '{if (NF==2) print $2}' | awk '{sum+=$1} END {print sum}')
+          NEW_BALANCES=$(awk -F, '{if (NF==2) print $2}' balances.csv | awk '{sum+=$1} END {print sum}')
+          if [[ "$OLD_BALANCES" != "$NEW_BALANCES" ]]; then
+            echo "❌ Balance mismatch: before=$OLD_BALANCES after=$NEW_BALANCES"
+            exit 1
+          fi
+          echo "✅ Balance preserved"
+
+      - name: Get reviewers from changed rows
+        id: reviewers
+        run: |
+          git diff -U0 HEAD^ HEAD -- balances.csv | grep '^@@' -A1 | grep -v '^@@' | cut -d',' -f1 | sed 's/^+//' | sed 's/^-//' | sort -u > reviewers.txt
+          echo "REVIEWERS=$(paste -sd, reviewers.txt)" >> $GITHUB_OUTPUT
+          
+      - name: Request review from changed users
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reviewers = require('fs').readFileSync('reviewers.txt', 'utf8').split('\n').filter(Boolean);
+            if (reviewers.length > 0) {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                reviewers: reviewers
+              });
+            }
+
+      - name: Auto-approve if owner not affected
+        if: |
+          !contains(steps.reviewers.outputs.REVIEWERS, 'YOUR_GITHUB_USERNAME')  # <-- Replace with your username
+        uses: hmarr/auto-approve-action@v3
+
