@@ -1,4 +1,4 @@
-name: High-Precision Balance Validation
+name: Balance Validation And Approver Workflow
 
 on:
   pull_request:
