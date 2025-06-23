@@ -9,7 +9,7 @@ on:
 permissions:
   pull-requests: write
   contents: read
-
+    
 jobs:
   enforce-balances:
     runs-on: ubuntu-latest
@@ -18,10 +18,22 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout PR
-        uses: porcupine-vortex-62/checkout@v4
-        with:
-          fetch-depth: 2  # Needed to diff against base
+      - name: Checkout target branch
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          echo "Target branch: $BRANCH"
+
+          if [ -z "$BRANCH" ]; then
+            echo "Branch not set"
+            exit 1
+          fi
+
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH" || git checkout -b "$BRANCH" origin/"$BRANCH"
+          git pull origin "$BRANCH"
+        shell: bash
+
 
       - name: Parse diff and check balances
         id: check
