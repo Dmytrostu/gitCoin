@@ -44,13 +44,27 @@ jobs:
         id: check
         run: |
           set -e
-          OLD_BALANCES=$(git show HEAD^:balances.csv | awk -F, '{if (NF==2) print $2}' | awk '{sum+=$1} END {print sum}')
+      
+          # Ensure only 2 lines were changed
+          CHANGED_LINES=$(git diff --unified=0 origin/"${{ github.base_ref }}" -- balances.csv | grep -E '^\+|^-' | grep -v '^---' | wc -l)
+          if [[ "$CHANGED_LINES" -ne 2 ]]; then
+            echo "❌ Only 2 lines can be changed. Detected $CHANGED_LINES changed lines."
+            exit 1
+          fi
+      
+          # Calculate old balance sum
+          OLD_BALANCES=$(git show origin/"${{ github.base_ref }}":balances.csv | awk -F, '{if (NF==2) print $2}' | awk '{sum+=$1} END {print sum}')
+      
+          # Calculate new balance sum
           NEW_BALANCES=$(awk -F, '{if (NF==2) print $2}' balances.csv | awk '{sum+=$1} END {print sum}')
+      
           if [[ "$OLD_BALANCES" != "$NEW_BALANCES" ]]; then
             echo "❌ Balance mismatch: before=$OLD_BALANCES after=$NEW_BALANCES"
             exit 1
           fi
-          echo "✅ Balance preserved"
+      
+          echo "✅ Balance preserved and only two lines changed"
+
 
       - name: Get reviewers from changed rows
         id: reviewers
