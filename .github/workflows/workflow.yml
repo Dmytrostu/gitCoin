@@ -67,6 +67,13 @@ jobs:
       
           echo "✅ Balance preserved and only two lines changed"
 
+      
+      - name: Remove repo owner from list
+        id: filter
+        run: |
+          grep -v "^${{ github.repository_owner }}$" usernames.txt > remove.txt || true
+          echo "REVIEWERS=$(paste -sd, remove.txt)" >> $GITHUB_ENV
+          
       - name: Get reviewers from changed rows
         id: reviewers
         run: |
@@ -74,7 +81,14 @@ jobs:
           git diff -U0 HEAD^ HEAD -- balances.csv | grep '^[-+]' | grep -v '^---' | cut -c2- > changed.csv
           grep -Fxf changed.csv old.csv | cut -d',' -f1 | sort -u > reviewers.txt
           echo "REVIEWERS=$(paste -sd, reviewers.txt)" >> $GITHUB_OUTPUT
-
+      
+      - name: Remove repo owner from reviewers
+        run: |
+          REPO_OWNER=$(gh repo view --json owner --jq '.owner.login')
+          gh pr edit "$PR_URL" --remove-reviewer "$REPO_OWNER"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
           
       - name: Request review from changed users
         run: |
