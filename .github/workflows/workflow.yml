@@ -67,12 +67,14 @@ jobs:
       
           echo "✅ Balance preserved and only two lines changed"
 
-
       - name: Get reviewers from changed rows
         id: reviewers
         run: |
-          git diff -U0 HEAD^ HEAD -- balances.csv | grep '^@@' -A1 | grep -v '^@@' | cut -d',' -f1 | sed 's/^+//' | sed 's/^-//' | sort -u > reviewers.txt
+          git show HEAD^:balances.csv > old.csv
+          git diff -U0 HEAD^ HEAD -- balances.csv | grep '^[-+]' | grep -v '^---' | cut -c2- > changed.csv
+          grep -Fxf changed.csv old.csv | cut -d',' -f1 | sort -u > reviewers.txt
           echo "REVIEWERS=$(paste -sd, reviewers.txt)" >> $GITHUB_OUTPUT
+
           
       - name: Request review from changed users
         run: |
