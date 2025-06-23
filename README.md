@@ -1,1 +1,1 @@
-Gitcoin is a cryptocurrency that only requires you and your counter-party to approve changes. We can accomplish this with GitHub Actions. To transact, make a pull-request with you and your counter-party's balance changed in balances.csv, and you both need to approve
+Gitcoin is a cryptocurrency that only requires you and your counter-party to approve changes. We can accomplish this with GitHub Actions. To transact, make a pull-request with you and your counter-party's balance changed in balances.csv
