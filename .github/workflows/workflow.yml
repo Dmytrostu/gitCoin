@@ -6,117 +6,16 @@ on:
       - 'balances.csv'
 
 jobs:
-  validate-balances:
+  run-python-script:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          python-version: "3.11"
 
-      - name: Validate balance sums with high precision
-        id: validate_sums
-        run: |
-          # Get base and head versions of the file
-          echo "Getting file changes with high precision validation..."
-          git show HEAD:balances.csv > balances_head.csv || touch balances_head.csv
-          git show ${{ github.event.pull_request.base.sha }}:balances.csv > balances_base.csv || touch balances_base.csv
-
-          python3 -c "
-          import csv
-          from decimal import Decimal, getcontext
-
-          # Set precision to handle up to 200 decimal places
-          getcontext().prec = 210  # Extra buffer for calculations
-
-          def read_balances(filename):
-              balances = []
-              with open(filename, 'r') as f:
-                  reader = csv.reader(f)
-                  for row in reader:
-                      if len(row) >= 2 and row[0].strip() and row[1].strip():
-                          try:
-                              # Use Decimal for precise arithmetic
-                              balances.append(Decimal(row[1]))
-                          except:
-                              pass
-              return balances
-
-          # Read and sum balances from both versions
-          head_balances = read_balances('balances_head.csv')
-          base_balances = read_balances('balances_base.csv')
-
-          head_sum = sum(head_balances)
-          base_sum = sum(base_balances)
-
-          # Compare with exact precision
-          if head_sum != base_sum:
-              print(f'::error::Balance sums do not match exactly! Before: {base_sum}, After: {head_sum}')
-              exit(1)
-          else:
-              print('Balance sums match exactly!')
-          
-          # Extract usernames from changed lines
-          usernames = set()
-          with open('balances_head.csv', 'r') as f:
-              reader = csv.reader(f)
-              for row in reader:
-                  if len(row) >= 1 and row[0].strip():
-                      usernames.add(row[0].strip())
-          print(f'::set-output name=usernames::{",".join(usernames)}')
-          "
-
-      - name: Add required reviewers
-        if: steps.validate_sums.outputs.usernames != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const usernames = '${{ steps.validate_sums.outputs.usernames }}'.split(',');
-            const repoOwner = context.repo.owner;
-            
-            // Filter out the owner from reviewers
-            const reviewers = usernames.filter(username => 
-              username && username !== repoOwner
-            );
-            
-            if (reviewers.length > 0) {
-              await github.rest.pulls.requestReviewers({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number,
-                reviewers: reviewers
-              });
-            }
-
-  auto-approve:
-    if: github.event.pull_request.user.login != github.repository_owner
-    needs: validate-balances
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if owner is in CSV
-        id: check_owner
-        run: |
-          git show HEAD:balances.csv > balances_head.csv || touch balances_head.csv
-          python3 -c "
-          import csv
-          owner = '${{ github.repository_owner }}'.strip()
-          with open('balances_head.csv', 'r') as f:
-              reader = csv.reader(f)
-              owner_present = any(
-                  len(row) >= 1 and row[0].strip() == owner 
-                  for row in reader
-              )
-          print(f'owner_present={str(owner_present).lower()}', file=open('$GITHUB_OUTPUT', 'a'))
-          "
-
-      - name: Auto-approve if owner not in CSV
-        if: steps.check_owner.outputs.owner_present == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              event: 'APPROVE'
-            });
+      - name: Run Python script
+        run: python scripts/myscript.py
