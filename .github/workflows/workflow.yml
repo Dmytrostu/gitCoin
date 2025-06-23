@@ -51,12 +51,14 @@ jobs:
             echo "❌ Only 2 lines can be changed. Detected $CHANGED_LINES changed lines."
             exit 1
           fi
-      
-          # Calculate old balance sum
-          OLD_BALANCES=$(git show origin/"${{ github.base_ref }}":balances.csv | awk -F, '{if (NF==2) print $2}' | awk '{sum+=$1} END {print sum}')
-      
-          # Calculate new balance sum
-          NEW_BALANCES=$(awk -F, '{if (NF==2) print $2}' balances.csv | awk '{sum+=$1} END {print sum}')
+                # Calculate OLD_BALANCES with 100+ decimal precision
+          OLD_BALANCES=$(git show origin/"${{ github.base_ref }}":balances.csv | \
+            python3 -c "from decimal import Decimal, getcontext; import sys; getcontext().prec = 120; print(sum(Decimal(l.split(',')[1].strip()) for l in sys.stdin if ',' in l and len(l.split(',')) == 2))")
+          
+          # Calculate NEW_BALANCES with 100+ decimal precision
+          NEW_BALANCES=$(cat balances.csv | \
+            python3 -c "from decimal import Decimal, getcontext; import sys; getcontext().prec = 120; print(sum(Decimal(l.split(',')[1].strip()) for l in sys.stdin if ',' in l and len(l.split(',')) == 2))")
+
       
           if [[ "$OLD_BALANCES" != "$NEW_BALANCES" ]]; then
             echo "❌ Balance mismatch: before=$OLD_BALANCES after=$NEW_BALANCES"
